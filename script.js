@@ -56,7 +56,7 @@ if(okCfg){
   firebase.initializeApp(cfg);auth=firebase.auth();
   try{firebase.firestore().enablePersistence({synchronizeTabs:true}).catch(()=>{})}catch(e){}
   auth.onAuthStateChanged(onAuth);
-}else{showLogin();$('#lerr').textContent='Firebase belum dikonfigurasi. Isi firebase-config.js terlebih dahulu.'}
+}else{showLogin();$('#lerr').textContent=!window.firebase?'Library Firebase gagal dimuat. Periksa koneksi internet, matikan adblock/VPN, lalu refresh.':!cfg?'File firebase-config.js tidak terbaca atau isinya salah (harus diawali window.FIREBASE_CONFIG = ).':'apiKey di firebase-config.js belum diisi dengan benar.'}
 
 /* ---------- FORM ---------- */
 function form(it,isNew){
