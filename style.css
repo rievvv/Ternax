@@ -111,3 +111,16 @@ img.th,.th{width:42px;height:42px;object-fit:cover;border-radius:8px;display:blo
 .lbox input{margin-top:10px}.lbox .btn{width:100%;margin-top:12px}.lbox .btn.alt{margin-top:8px}
 #lerr{color:#c62828;font-size:13px;min-height:18px;margin-top:8px}
 .hint{font-size:12px;color:var(--mut);margin-top:12px}
+/* ===== Revisi: profil laptop, input opsional, HPP ===== */
+@media(min-width:761px){#nav .pfbtn{display:none}}
+.av:hover{box-shadow:0 0 0 3px rgba(255,255,255,.5)}
+details.opt{margin-top:14px;border:1px dashed var(--bd);border-radius:12px;padding:10px 12px}
+details.opt summary{cursor:pointer;font-weight:600;color:var(--mut)}
+.hl{display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:8px;margin-bottom:8px;align-items:end}
+.hl .btn{padding:10px 12px}
+.sb{display:flex;height:16px;border-radius:8px;overflow:hidden;margin:8px 0 12px}
+.sb i{display:block;height:100%}
+.dot{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px}
+.tip{padding:9px 12px;border-radius:10px;margin-bottom:8px;font-size:14px;background:#eef8e3;border-left:4px solid #2e9e4f}
+.tip.w{background:#fff4e0;border-color:#f59e0b}.tip.b{background:#fdecea;border-color:#c62828}
+@media(max-width:760px){.hl{grid-template-columns:1fr 1fr}.hl>:first-child{grid-column:1/-1}}

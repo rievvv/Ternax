@@ -1,7 +1,7 @@
 /* Ternax by Nexora - script.js (v2: login + realtime Firebase + filter + export) */
 const TY={kambing:'Kambing',ayam:'Ayam',sapi:'Sapi',telur:'Telur'};
 const ST={ready:'Ready',order:'By Order',sold:'Sold'};
-const PAGES=[['dash','📊','Dashboard'],['input','➕','Input'],['kambing','🐐','Kambing'],['ayam','🐔','Ayam'],['sapi','🐄','Sapi'],['telur','🥚','Telur'],['jual','💰','Penjualan'],['set','⚙️','Harga Pasar'],['profil','👤','Profil']];
+const PAGES=[['dash','📊','Dashboard'],['input','➕','Input'],['kambing','🐐','Kambing'],['ayam','🐔','Ayam'],['sapi','🐄','Sapi'],['telur','🥚','Telur'],['jual','💰','Penjualan'],['hpp','🧮','Hitung HPP'],['profil','👤','Profil']];
 const EM={kambing:'🐐',ayam:'🐔',sapi:'🐄',telur:'🥚'};
 let S={profile:{},items:[],rates:{kambing:90000,ayam:45000,sapi:60000,telur:45}};
 let page='dash',draftType='kambing',photoTmp='',base=null,auth=null,unsubs=[],FL={};
@@ -51,7 +51,7 @@ function onAuth(u){
   unsubs.push(base.collection('meta').doc('settings').onSnapshot(d=>{if(d.exists)Object.assign(S.rates,d.data());onData()}));
   nav();render();
 }
-function onData(){ if(page=='dash')renderDash(); else if(!['input','set','profil'].includes(page))renderTable() }   // update realtime tanpa mengganggu form
+function onData(){ if(page=='dash')renderDash(); else if(!['input','hpp','profil'].includes(page))renderTable() }   // update realtime tanpa mengganggu form
 const saveItem=o=>{if(o.status=='sold'&&!o.soldAt)o.soldAt=Date.now();if(o.status!='sold')delete o.soldAt;return base.collection('items').doc(String(o.id)).set(o).catch(e=>alert('Gagal menyimpan: '+e.message))};
 const delItem=id=>base.collection('items').doc(String(id)).delete().catch(e=>alert(e.message));
 if(okCfg){
@@ -62,14 +62,18 @@ if(okCfg){
 
 /* ---------- FORM ---------- */
 function form(it,isNew){
-  const t=it.type,v=k=>esc(it[k]);let h='<div class="grid">';
-  if(isNew)h+=F('Jenis',sel('f_type',Object.entries(TY),t));
-  h+=F('Kode',`<input id="f_code" value="${v('code')}">`);
-  if(t=='telur')h+=F('Tanggal bertelur',`<input type="date" id="f_laydate" value="${v('laydate')}">`)+F('Kode ayam petelur',`<input id="f_hen" value="${v('hen')}">`)+F('Berat telur (gram)',`<input type="number" step="any" id="f_weight" value="${v('weight')}">`);
-  else h+=F('Jenis kelamin',sel('f_sex',[['Jantan','Jantan'],['Betina','Betina']],it.sex))+F('Usia (bulan)',`<input type="number" id="f_age" value="${v('age')}">`)+F('Berat (kg)',`<input type="number" step="any" id="f_weight" value="${v('weight')}">`);
-  h+=F('Modal / biaya (Rp)',`<input type="number" id="f_cost" value="${v('cost')}">`)+F('Harga dari saya (Rp)',`<input type="number" id="f_price" value="${v('price')}">`)+F('Status',sel('f_status',[['ready','Ready'],['order','By Order'],['sold','Sold']],it.status||'ready'))+F('Foto',`<input type="file" accept="image/*" id="f_photo">`)+'</div>';
-  h+=`<div style="margin-top:12px">${F('Keterangan',`<textarea id="f_note" rows="3">${v('note')}</textarea>`)}</div><div id="pv">${it.photo?`<img src="${it.photo}" style="max-width:160px;border-radius:10px;margin-top:10px">`:''}</div>`;
-  return h;
+  const t=it.type,v=k=>esc(it[k]),L=t=='telur',inp=(k,l,ty='number')=>F(l,`<input type="${ty}" ${ty=='number'?'step="any" ':''}id="f_${k}" value="${v(k)}">`);
+  const today=new Date(Date.now()-new Date().getTimezoneOffset()*6e4).toISOString().slice(0,10);
+  const A=L?F('Tanggal bertelur *',`<input type="date" id="f_laydate" value="${it.laydate||(isNew?today:'')}">`):'',
+  E=F('Status *',sel('f_status',[['ready','Ready'],['order','By Order'],['sold','Sold']],it.status||'ready')),
+  B=F('Kode',`<input id="f_code" value="${v('code')}"${isNew?' placeholder="Otomatis jika kosong"':''}>`),
+  C=L?inp('hen','Kode ayam petelur','text')+inp('weight','Berat telur (gram)'):F('Jenis kelamin',sel('f_sex',[['','– pilih –'],['Jantan','Jantan'],['Betina','Betina']],it.sex))+inp('age','Usia (bulan)')+inp('weight','Berat (kg)'),
+  D=inp('cost','Modal / biaya (Rp)')+inp('price','Harga dari saya (Rp)'),
+  G=F('Foto','<input type="file" accept="image/*" id="f_photo">'),
+  N=`<div style="margin-top:12px">${F('Keterangan',`<textarea id="f_note" rows="3">${v('note')}</textarea>`)}</div>`,
+  P=`<div id="pv">${it.photo?`<img src="${it.photo}" style="max-width:160px;border-radius:10px;margin-top:10px">`:''}</div>`;
+  if(!isNew)return `<div class="grid">${A}${B}${C}${D}${E}${G}</div>${N}${P}`;
+  return `<div class="grid">${F('Jenis *',sel('f_type',Object.entries(TY),t))}${A}${E}</div><details class="opt"><summary>＋ Data tambahan (opsional, bisa diisi nanti)</summary><div class="grid" style="margin-top:12px">${B}${C}${D}${G}</div>${N}</details>${P}`;
 }
 function bindForm(){
   const p=$('#f_photo');if(!p)return;
@@ -85,7 +89,7 @@ function read(b){
 function av(){const p=S.profile||{},u=auth&&auth.currentUser,n=p.name||(u&&u.email)||'?';return p.photo?`<img src="${p.photo}">`:`<span>${esc(n[0].toUpperCase())}</span>`}
 function updHdr(){const u=auth&&auth.currentUser;$('#av').innerHTML=av();$('#who').textContent=(S.profile&&S.profile.name)||(u?u.email:'')}
 function nav(){const u=auth&&auth.currentUser,p=S.profile||{};
-  $('#nav').innerHTML=`<div class="dp"><div class="av">${av()}</div><div><b>${esc(p.name||'Peternak')}</b><small>${esc(u?u.email:'')}</small></div></div>`+PAGES.map(p=>`<button class="${page==p[0]?'on':''}" onclick="go('${p[0]}')"><span>${p[1]}</span><span>${p[2]}</span></button>`).join('')+`<button class="lg" onclick="logout()"><span>🚪</span><span>Keluar</span></button>`}
+  $('#nav').innerHTML=`<div class="dp"><div class="av">${av()}</div><div><b>${esc(p.name||'Peternak')}</b><small>${esc(u?u.email:'')}</small></div></div>`+PAGES.map(p=>`<button class="${page==p[0]?'on':''}${p[0]=='profil'?' pfbtn':''}" onclick="go('${p[0]}')"><span>${p[1]}</span><span>${p[2]}</span></button>`).join('')+`<button class="lg" onclick="logout()"><span>🚪</span><span>Keluar</span></button>`}
 function go(p){page=p;photoTmp='';menu(false);nav();render();scrollTo(0,0)}
 function menu(o){$('#nav').classList.toggle('open',o);$('#bd').classList.toggle('show',o)}
 $('#burger').onclick=()=>menu(!$('#nav').classList.contains('open'));$('#bd').onclick=()=>menu(false);
@@ -163,12 +167,11 @@ function render(){
   if(page=='dash')return renderDash();
   if(page=='profil')return renderProfil();
   if(page=='input'){
-    $('#main').innerHTML=`<div class="card"><h2>Input Data Ternak</h2>${form({type:draftType},true)}<div class="row"><button class="btn" id="sv">Simpan</button></div></div>`;
+    $('#main').innerHTML=`<div class="card"><h2>Input Data Ternak</h2><p style="color:var(--mut);margin:-4px 0 12px">Yang wajib diisi hanya yang bertanda *.</p>${form({type:draftType},true)}<div class="row"><button class="btn" id="sv">Simpan</button></div></div>`;
     bindForm();$('#f_type').onchange=e=>{draftType=e.target.value;photoTmp='';render()};
-    $('#sv').onclick=()=>{const o=read({type:draftType,id:Date.now()});if(!o.code){alert('Kode wajib diisi');return}saveItem(o);photoTmp='';alert('Data tersimpan!');go(o.status=='sold'?'jual':o.type)};
-  }else if(page=='set'){
-    $('#main').innerHTML=`<div class="card"><h2>Harga Pasar (taksiran otomatis)</h2><p style="color:var(--mut)">Taksiran = berat × harga ini. Berlaku di semua perangkat.</p><div class="grid">${Object.keys(TY).map(k=>F(k=='telur'?'Telur (Rp per gram)':TY[k]+' (Rp per kg)',`<input type="number" id="r_${k}" value="${S.rates[k]}">`)).join('')}</div><div class="row"><button class="btn" id="sr">Simpan</button></div></div>`;
-    $('#sr').onclick=()=>{const r={};Object.keys(TY).forEach(k=>r[k]=+$('#r_'+k).value||0);base.collection('meta').doc('settings').set(r);alert('Tersimpan')};
+    $('#sv').onclick=()=>{const o=read({type:draftType,id:Date.now()});if(o.type=='telur'&&!o.laydate){alert('Tanggal bertelur wajib diisi');return}
+      if(!o.code){const pre={kambing:'KMB',ayam:'AYM',sapi:'SPI',telur:'TLR'}[o.type];let n=S.items.filter(i=>i.type==o.type).length+1;while(S.items.some(i=>i.code==pre+'-'+String(n).padStart(3,'0')))n++;o.code=pre+'-'+String(n).padStart(3,'0')}saveItem(o);photoTmp='';alert('Data tersimpan!');go(o.status=='sold'?'jual':o.type)};
+  }else if(page=='hpp'){renderHPP();
   }else{
     $('#main').innerHTML=`<div class="card"><div class="hd"><h2>${title()}</h2><div class="ex"><button class="btn alt" onclick="exp('pdf')">📄 PDF</button><button class="btn alt" onclick="exp('xlsx')">📊 Excel</button></div></div>${fbar()}<div id="sum"></div><div class="tw" id="tbl"></div></div>`;
     renderTable();
