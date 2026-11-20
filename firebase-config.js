@@ -1,4 +1,4 @@
-const firebaseConfig = {
+window.FIREBASE_CONFIG = {
   apiKey: "AIzaSyDIDe8SvLiM2wNxao8wWPrcP6sh2p8YQ9k",
   authDomain: "ternax.firebaseapp.com",
   projectId: "ternax",
