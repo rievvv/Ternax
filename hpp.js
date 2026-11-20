@@ -6,7 +6,8 @@ const HD={
  ayam:{n:500,mort:5,w1:1.9,items:[{n:'Bibit (DOC)',c:7000},{n:'Pakan selama pemeliharaan',c:31000},{n:'Obat, vaksin & vitamin',c:1500},{n:'Tenaga kerja',c:1500},{n:'Kandang, listrik & lain-lain',c:1500}]},
  telur:{n:500,eg:290,gram:62,brk:3,items:[{n:'Harga ayam (pullet)',c:75000},{n:'Pakan selama 1 periode',c:315000},{n:'Obat, vaksin & vitamin',c:5000},{n:'Tenaga kerja',c:15000},{n:'Kandang, listrik & lain-lain',c:10000}]}
 };
-const HB={ikut:'',mg:20,want:'',wu:'u',name:''};
+Object.values(HD).forEach(d=>d.items.forEach((x,i)=>x.r=['m','b','b','x','x'][i]));   // peran biaya untuk bagi hasil: m=modal hewan, b=dibagi, x=tidak ikut
+const HB={ikut:'',mg:20,want:'',wu:'u',name:'',bh:'n',sp:50,pay:'p'};
 let H=null,HS=[],hid=null;
 function hNew(t){H=clone(Object.assign({},HB,HD[t],{type:t}));hid=null}
 
@@ -24,15 +25,17 @@ function calc(h){
 const hin=(k,l,u,ph)=>F(l+(u?` <small>(${u})</small>`:''),`<input type="number" step="any" inputmode="decimal" data-k="${k}" value="${H[k]??''}" ${ph?`placeholder="${ph}"`:''} oninput="hUp()">`);
 function hRead(){const nm=$('#h_name');if(nm)H.name=nm.value;document.querySelectorAll('#main [data-k]').forEach(e=>{const k=e.dataset.k;e.dataset.l?H[e.dataset.l][+e.dataset.i][k]=e.value:H[k]=e.value})}
 const hUp=()=>{hRead();hResult()};
-const hAdd=()=>{hRead();H.items.push({n:'',c:''});renderHPP()};
-const hDel=i=>{hRead();H.items.splice(i,1);if(!H.items.length)H.items.push({n:'',c:''});renderHPP()};
+const hAdd=()=>{hRead();H.items.push({n:'',c:'',r:'b'});renderHPP()};
+const hDel=i=>{hRead();H.items.splice(i,1);if(!H.items.length)H.items.push({n:'',c:'',r:'b'});renderHPP()};
 
 function renderHPP(){
   if(!H)hNew('kambing');
   const L=H.type=='telur',lt=L?'ayam':'ekor';
-  const rows=H.items.map((x,i)=>`<div style="display:grid;grid-template-columns:1.6fr 1fr auto;gap:8px;align-items:end;margin-bottom:8px">
-    ${F('Nama biaya',`<input data-l="items" data-i="${i}" data-k="n" value="${esc(x.n)}" oninput="hUp()">`)}
-    ${F('Rp per '+lt,`<input type="number" step="any" inputmode="decimal" data-l="items" data-i="${i}" data-k="c" value="${esc(x.c)}" oninput="hUp()">`)}
+  const BH=H.bh=='y',ro=[['m','Modal hewan (diganti dulu)'],['b','Pakan/biaya dibagi'],['x','Tidak ikut dihitung']];
+  const rows=H.items.map((x,i)=>`<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:end;margin-bottom:10px">
+    <div style="flex:2 1 150px"><label>Nama biaya</label><input data-l="items" data-i="${i}" data-k="n" value="${esc(x.n)}" oninput="hUp()"></div>
+    <div style="flex:1 1 110px"><label>Rp per ${lt}</label><input type="number" step="any" inputmode="decimal" data-l="items" data-i="${i}" data-k="c" value="${esc(x.c)}" oninput="hUp()"></div>
+    ${BH?`<div style="flex:1.4 1 160px"><label>Perlakuan bagi hasil</label><select data-l="items" data-i="${i}" data-k="r" onchange="hUp()">${ro.map(o=>`<option value="${o[0]}" ${o[0]==(x.r||'b')?'selected':''}>${o[1]}</option>`).join('')}</select></div>`:''}
     <button class="btn red" onclick="hDel(${i})">✕</button></div>`).join('');
   const wopts=L?[['u','per butir'],['kg','per kg telur'],['tray','per tray (30 butir)']]:[['u','per ekor'],['kg','per kg bobot hidup']];
   $('#main').innerHTML=`<div class="card"><div class="hd"><h2>🧮 Hitung HPP & Harga Jual</h2><div class="ex"><button class="btn alt" onclick="hPdf()">📄 PDF</button></div></div>
@@ -44,10 +47,15 @@ function renderHPP(){
   <div class="card"><h2>1. Modal per ${lt}</h2><p style="color:var(--mut);margin:0 0 10px">${L?'Total biaya untuk 1 ayam selama 1 periode produksi.':'Total biaya untuk 1 ekor sampai siap dijual.'} Tambah atau hapus baris sesuai kebutuhan.</p>${rows}
   <button class="btn alt" onclick="hAdd()">＋ Tambah biaya</button>
   <div class="grid" style="margin-top:12px">${hin('ikut','Pendapatan tambahan per '+lt+' (opsional)','Rp',L?'mis. ayam afkir, kotoran':'mis. kotoran/pupuk')}${hin('mg','Target untung saya','% dari harga jual')}</div></div>
+  <div class="card"><h2>Bagi hasil (opsional)</h2>
+  <div class="grid">${F('Ada bagi hasil?',`<select data-k="bh" onchange="hToggle()"><option value="n" ${BH?'':'selected'}>Tidak ada</option><option value="y" ${BH?'selected':''}>Ya, ada bagi hasil</option></select>`)}
+  ${BH?hin('sp','Bagian pemilik modal','% dari laba (sisanya untuk peternak)')+F('Pakan & biaya dibagi dibayar di muka oleh',`<select data-k="pay" onchange="hUp()"><option value="p" ${H.pay=='p'?'selected':''}>Peternak</option><option value="o" ${H.pay=='o'?'selected':''}>Pemilik modal</option></select>`):''}</div>
+  ${BH?`<p style="color:var(--mut);margin:10px 0 0;font-size:14px">Tentukan perlakuan tiap biaya di bagian Modal di atas. Cara hitung: hasil penjualan dikurangi modal hewan (dikembalikan dulu ke pemilik) dan pakan/biaya dibagi, sisanya baru dibagi sesuai persentase. Dengan begitu pakan otomatis ditanggung kedua pihak sesuai porsi bagi hasil.</p>`:''}</div>
   <div id="hr"></div>
   <div class="card"><h2>3. Harga jual yang saya inginkan</h2><p style="color:var(--mut);margin:0 0 10px">Ketik harga yang ingin Anda pasang, nanti saya beri saran.</p>
   <div class="grid">${hin('want','Harga yang saya inginkan','Rp','')}${F('Harga tersebut untuk',`<select data-k="wu" onchange="hUp()">${wopts.map(o=>`<option value="${o[0]}" ${o[0]==H.wu?'selected':''}>${o[1]}</option>`).join('')}</select>`)}</div>
   <div id="hw" style="margin-top:12px"></div></div>
+  <div id="hb"></div>
   <div class="card"><h2>Simpan skenario</h2><div class="grid">${F('Nama skenario / batch',`<input id="h_name" placeholder="mis. Batch Desember" value="${esc(H.name||'')}">`)}
   ${F('Skenario tersimpan',`<select id="h_sel"><option value="">– pilih –</option>${HS.map(x=>`<option value="${x.id}" ${x.id==hid?'selected':''}>${esc(x.name)}</option>`).join('')}</select>`)}</div>
   <div class="row"><button class="btn" onclick="hSave()">💾 Simpan</button><button class="btn alt" onclick="hLoadSel()">Muat</button><button class="btn red" onclick="hDelSave()">Hapus</button></div></div>
@@ -83,7 +91,7 @@ function hResult(){
   <div class="grid">${kp('Modal impas (HPP)',r.hppU,'')}${kp('Harga aman (untung tipis 10%)',pr(.1))}${kp('✅ Harga disarankan (untung '+fm(m*100)+'%)',pr(m),'g')}${kp('Harga untung besar ('+fm(m*100+10)+'%)',pr(Math.min(m+.1,.9)))}</div>
   <div style="margin-top:12px">${ttl}</div>
   <div class="tw" style="margin-top:8px"><table><tr><th>Rincian modal per ${lt}</th><th>Biaya</th><th>%</th></tr>${P}<tr><td><b>Total modal</b></td><td><b>${rp(r.modal)}</b></td><td></td></tr>${q(h.ikut)?`<tr><td>Pendapatan tambahan</td><td>− ${rp(q(h.ikut))}</td><td></td></tr>`:''}</table></div></div>`;
-  hWant();
+  hWant();hBagiRender();
 }
 function hWant(){
   const el=$('#hw');if(!el)return;
@@ -109,12 +117,50 @@ function hWant(){
   <div style="margin-top:10px">${t.join('')}</div>`;
 }
 
+/* ---------- bagi hasil ---------- */
+const hToggle=()=>{hRead();renderHPP()};
+function hToUnit(s){const r=calc(H);return H.wu=='kg'?s*r.kgU:H.wu=='tray'?s/30:s}
+function hBagi(pU){
+  const h=H,r=calc(h),n=r.n,sp=Math.min(Math.max(q(h.sp),0),100)/100;
+  const sum=t=>h.items.filter(x=>(x.r||'b')==t).reduce((a,x)=>a+q(x.c),0)*n;
+  const B=sum('m'),K=sum('b'),X=sum('x'),sale=pU*r.units,ik=q(h.ikut)*n,pool=sale+ik-B-K,o=pool*sp,p=pool*(1-sp),op=h.pay=='o';
+  return{n,sp,B,K,X,sale,ik,pool,o,p,uo:B+(op?K:0)+o,up:(op?0:K)+p,be:r.units?(B+K-ik)/r.units:0};
+}
+function hBagiRender(){
+  const el=$('#hb');if(!el)return;
+  if(H.bh!='y'){el.innerHTML='';return}
+  const{h,r,L,u,m,pr}=hCtx();
+  if(r.hppU<=0){el.innerHTML='';return}
+  const cols=[['Harga disarankan',pr(m)]];if(q(h.want))cols.push(['Harga keinginan Anda',hToUnit(q(h.want))]);
+  const bs=cols.map(c=>hBagi(c[1])),b0=bs[0],spp=fm(b0.sp*100),ppp=fm((1-b0.sp)*100),lt=L?'ayam':'ekor';
+  const R=(l,f,bold)=>`<tr><td>${bold?'<b>'+l+'</b>':l}</td>${bs.map((b,i)=>`<td>${bold?'<b>'+f(b,i)+'</b>':f(b,i)}</td>`).join('')}</tr>`;
+  const neg=v=>`<span class="${v<0?'neg':'pos'}">${rp(v)}</span>`;
+  let t='';
+  if(bs.some(b=>b.pool<0))t+='<div class="tip b">Pada salah satu harga, hasil penjualan tidak menutup modal hewan dan pakan. Kerugian ikut dibagi sesuai porsi bagi hasil.</div>';
+  t+=`<div class="tip">Harga jual impas bagi hasil (laba dibagi = 0): ${rp(b0.be)} per ${u}${r.kgU?' atau '+rp(b0.be/r.kgU)+' per kg':''}.</div>`;
+  if(b0.X>0)t+='<div class="tip w">Biaya yang ditandai "Tidak ikut dihitung" (mis. tenaga kerja, kandang) tidak masuk perhitungan bagi hasil ini.</div>';
+  el.innerHTML=`<div class="card"><h2>4. Hitung bagi hasil</h2><div class="tw"><table><tr><th></th>${cols.map(c=>`<th>${c[0]}</th>`).join('')}</tr>
+  ${R('Harga jual per '+u,(b,i)=>rp(cols[i][1]))}
+  ${R('Total penjualan',b=>rp(b.sale))}
+  ${b0.ik?R('+ Pendapatan tambahan',b=>rp(b.ik)):''}
+  ${R('− Modal hewan (dikembalikan dulu)',b=>rp(b.B))}
+  ${R('− Pakan & biaya dibagi',b=>rp(b.K))}
+  ${R('= Laba untuk dibagi',b=>neg(b.pool),1)}
+  ${R('Bagian pemilik modal ('+spp+'%)',b=>neg(b.o))}
+  ${R('Bagian peternak ('+ppp+'%)',b=>neg(b.p))}
+  ${R('Laba pemilik per '+lt,b=>neg(b.n?b.o/b.n:0))}
+  ${R('Laba peternak per '+lt,b=>neg(b.n?b.p/b.n:0))}
+  ${R('Uang diterima pemilik',b=>rp(b.uo),1)}
+  ${R('Uang diterima peternak',b=>rp(b.up),1)}</table></div>
+  <p style="color:var(--mut);font-size:13px;margin:8px 0">Uang diterima = laba bagiannya, ditambah pengembalian modal yang ia keluarkan di muka (modal hewan untuk pemilik, pakan untuk pihak yang menalangi).</p>${t}</div>`;
+}
+
 /* ---------- simpan, muat, PDF ---------- */
 function hFill(){const e=$('#h_sel');if(e)e.innerHTML='<option value="">– pilih –</option>'+HS.map(x=>`<option value="${x.id}" ${x.id==hid?'selected':''}>${esc(x.name)}</option>`).join('')}
 function hLoad(){if(!base)return;base.collection('hpp').get().then(s=>{HS=s.docs.map(d=>d.data()).filter(x=>x.v==2).sort((a,b)=>b.at-a.at);hFill()}).catch(()=>{})}
 function hSave(){hRead();const n=$('#h_name').value.trim();if(!n){alert('Isi nama skenario dulu');return}
   hid=hid||Date.now();H.name=n;base.collection('hpp').doc(String(hid)).set({id:hid,name:n,at:Date.now(),v:2,h:clone(H)}).then(()=>{alert('Skenario tersimpan');hLoad()}).catch(e=>alert('Gagal menyimpan: '+e.message+' (cek firestore.rules agar path hpp diizinkan)'))}
-function hLoadSel(){const x=HS.find(s=>s.id==$('#h_sel').value);if(!x)return;H=clone(x.h);hid=x.id;renderHPP()}
+function hLoadSel(){const x=HS.find(s=>s.id==$('#h_sel').value);if(!x)return;H=clone(Object.assign({},HB,x.h));hid=x.id;renderHPP()}
 function hDelSave(){const id=$('#h_sel').value;if(!id||!confirm('Hapus skenario ini?'))return;base.collection('hpp').doc(id).delete().then(()=>{if(id==hid)hid=null;hLoad()})}
 function hPdf(){hRead();const{h,r,L,u,m,pr}=hCtx();
   try{const d=new jspdf.jsPDF();d.setFontSize(14);d.text('Ternax by Nexora - HPP & Harga Jual '+TY[h.type]+(h.name?' ('+h.name+')':''),14,14);d.setFontSize(9);d.text('Dicetak: '+new Date().toLocaleString('id-ID'),14,20);
@@ -126,6 +172,7 @@ function hPdf(){hRead();const{h,r,L,u,m,pr}=hCtx();
     body.push(['Harga aman (untung 10%) per '+u,rp(pr(.1))],['Harga disarankan (untung '+fm(m*100)+'%) per '+u,rp(pr(m))]);
     if(r.kgU)body.push(['Harga disarankan per kg',rp(pr(m)/r.kgU)]);
     if(q(h.want))body.push(['Harga keinginan Anda',rp(q(h.want))+' ('+({u:'per '+u,kg:'per kg',tray:'per tray'}[h.wu])+')']);
+    if(h.bh=='y'){const b=hBagi(pr(m));body.push(['--- Bagi hasil (di harga disarankan) ---',''],['Total penjualan',rp(b.sale)],['Modal hewan dikembalikan',rp(-b.B)],['Pakan & biaya dibagi',rp(-b.K)],['Laba untuk dibagi',rp(b.pool)],['Pemilik modal ('+fm(b.sp*100)+'%)',rp(b.o)],['Peternak ('+fm((1-b.sp)*100)+'%)',rp(b.p)],['Uang diterima pemilik',rp(b.uo)],['Uang diterima peternak',rp(b.up)])}
     d.autoTable({startY:24,head:[['Komponen','Nilai']],styles:{fontSize:9},headStyles:{fillColor:[46,158,79]},body});
     d.save('Ternax_HPP_'+h.type+'_'+new Date().toISOString().slice(0,10)+'.pdf')}catch(e){alert('Export PDF gagal. Pastikan internet aktif.')}
 }
