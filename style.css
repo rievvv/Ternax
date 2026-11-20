@@ -73,3 +73,22 @@ img.th,.th{width:42px;height:42px;object-fit:cover;border-radius:8px;display:blo
 @media(prefers-color-scheme:dark){
   :root{--bg:#0f1d12;--card:#17291b;--tx:#e8f5e4;--mut:#9db89f;--bd:#2a4430}
 }
+
+/* ===== v2: login, sinkron, filter, export ===== */
+.hidden{display:none!important}
+.hr{display:flex;align-items:center;gap:8px;margin-left:12px;font-size:12px}
+.hr .btn{padding:6px 10px;font-size:13px;background:rgba(255,255,255,.22)}
+#sync{opacity:.9;white-space:nowrap}
+.hd{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.hd h2{margin:0}.ex{display:flex;gap:8px}.ex .btn{padding:8px 12px;font-size:14px}
+.fb{margin-bottom:12px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+#sum{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:10px;color:var(--mut);font-size:14px}
+#sum b{color:var(--tx)}
+#login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:var(--grad)}
+.lbox{background:var(--card);border-radius:18px;padding:26px;width:100%;max-width:380px;text-align:center}
+.lbox h1{margin:8px 0 0;letter-spacing:3px;color:#2e9e4f}.lbox small{color:var(--mut)}
+.lbox input{margin-top:10px}.lbox .btn{width:100%;margin-top:12px}
+.lbox .btn.alt{margin-top:8px}
+#lerr{color:#c62828;font-size:13px;min-height:18px;margin-top:8px}
+.hint{font-size:12px;color:var(--mut);margin-top:12px}
+@media(max-width:760px){#who{display:none}.hr{margin-left:auto}}
