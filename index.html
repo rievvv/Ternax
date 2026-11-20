@@ -11,6 +11,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Ternax">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -51,13 +53,14 @@
       <path d="M50 8C22 20 12 48 22 72c6 12 18 20 28 20s22-8 28-20C88 48 78 20 50 8z" fill="#fff"/>
       <path d="M50 24v62M50 46c-9-3-15-9-19-17M50 46c9-3 15-9 19-17" stroke="#0b4f2a" stroke-width="4" fill="none" stroke-linecap="round"/>
     </svg>
-    <div><h1>Ternax</h1><small>by Nexora</small></div>
+    <div class="bt"><h1>Ternax</h1><small>by Nexora</small></div>
   </div>
   <!-- Menu: tombol di atas (laptop/PC), bar bawah (smartphone) -->
   <nav id="nav"></nav>
-  <div class="hr"><span id="sync">●</span><span id="who"></span><button class="btn hidden" id="inst">⬇ Pasang</button><button class="btn" id="out">Keluar</button></div>
+  <div class="hr"><span id="sync">●</span><span id="who"></span><div class="av" id="av" onclick="go('profil')"></div><button class="btn hidden" id="inst">⬇ Pasang</button><button class="btn" id="out">Keluar</button><button id="burger" aria-label="Menu">☰</button></div>
 </header>
 
+<div id="bd"></div>
 <main id="main"></main>
 
 <div class="modal" id="modal"><div class="box" id="box"></div></div>

@@ -1,9 +1,10 @@
 /* Ternax by Nexora - script.js (v2: login + realtime Firebase + filter + export) */
 const TY={kambing:'Kambing',ayam:'Ayam',sapi:'Sapi',telur:'Telur'};
 const ST={ready:'Ready',order:'By Order',sold:'Sold'};
-const PAGES=[['input','➕','Input Data','Input'],['kambing','🐐','Data Kambing','Kambing'],['ayam','🐔','Data Ayam','Ayam'],['sapi','🐄','Data Sapi','Sapi'],['telur','🥚','Data Telur','Telur'],['jual','💰','Penjualan','Jual'],['set','⚙️','Harga Pasar','Harga']];
-let S={items:[],rates:{kambing:90000,ayam:45000,sapi:60000,telur:45}};
-let page='input',draftType='kambing',photoTmp='',base=null,auth=null,unsubs=[],FL={};
+const PAGES=[['dash','📊','Dashboard'],['input','➕','Input'],['kambing','🐐','Kambing'],['ayam','🐔','Ayam'],['sapi','🐄','Sapi'],['telur','🥚','Telur'],['jual','💰','Penjualan'],['set','⚙️','Harga Pasar'],['profil','👤','Profil']];
+const EM={kambing:'🐐',ayam:'🐔',sapi:'🐄',telur:'🥚'};
+let S={profile:{},items:[],rates:{kambing:90000,ayam:45000,sapi:60000,telur:45}};
+let page='dash',draftType='kambing',photoTmp='',base=null,auth=null,unsubs=[],FL={};
 const $=s=>document.querySelector(s);
 const rp=n=>'Rp '+Math.round(n||0).toLocaleString('id-ID');
 const est=i=>Math.round((+i.weight||0)*S.rates[i.type]);
@@ -38,19 +39,20 @@ function doAuth(reg){
 }
 $('#lin').onclick=()=>doAuth(false);$('#lreg').onclick=()=>doAuth(true);
 $('#pw').onkeydown=e=>{if(e.key=='Enter')doAuth(false)};
-$('#out').onclick=()=>{if(confirm('Keluar dari akun?'))auth.signOut()};
+$('#out').onclick=logout;
 function showLogin(){$('#login').classList.remove('hidden');$('#app').classList.add('hidden')}
 function onAuth(u){
   unsubs.forEach(f=>f());unsubs=[];
   if(!u){S.items=[];showLogin();return}
-  $('#login').classList.add('hidden');$('#app').classList.remove('hidden');$('#who').textContent=u.email;setSync();
+  $('#login').classList.add('hidden');$('#app').classList.remove('hidden');setSync();page='dash';
   base=firebase.firestore().collection('users').doc(u.uid);
   unsubs.push(base.collection('items').onSnapshot(s=>{S.items=s.docs.map(d=>d.data());onData()},e=>alert('Gagal sinkron: '+e.message)));
+  unsubs.push(base.collection('meta').doc('profile').onSnapshot(d=>{S.profile=d.exists?d.data():{};updHdr();nav()}));
   unsubs.push(base.collection('meta').doc('settings').onSnapshot(d=>{if(d.exists)Object.assign(S.rates,d.data());onData()}));
   nav();render();
 }
-function onData(){ if(page!='input'&&page!='set')renderTable() }   // update realtime tanpa mengganggu form
-const saveItem=o=>base.collection('items').doc(String(o.id)).set(o).catch(e=>alert('Gagal menyimpan: '+e.message));
+function onData(){ if(page=='dash')renderDash(); else if(!['input','set','profil'].includes(page))renderTable() }   // update realtime tanpa mengganggu form
+const saveItem=o=>{if(o.status=='sold'&&!o.soldAt)o.soldAt=Date.now();if(o.status!='sold')delete o.soldAt;return base.collection('items').doc(String(o.id)).set(o).catch(e=>alert('Gagal menyimpan: '+e.message))};
 const delItem=id=>base.collection('items').doc(String(id)).delete().catch(e=>alert(e.message));
 if(okCfg){
   firebase.initializeApp(cfg);auth=firebase.auth();
@@ -80,8 +82,48 @@ function read(b){
 }
 
 /* ---------- NAVIGASI ---------- */
-function nav(){$('#nav').innerHTML=PAGES.map(p=>`<button class="${page==p[0]?'on':''}" onclick="go('${p[0]}')"><span class="ic">${p[1]}</span><span class="lb-l">${p[2]}</span><span class="lb-s">${p[3]}</span></button>`).join('')}
-function go(p){page=p;photoTmp='';nav();render();scrollTo(0,0)}
+function av(){const p=S.profile||{},u=auth&&auth.currentUser,n=p.name||(u&&u.email)||'?';return p.photo?`<img src="${p.photo}">`:`<span>${esc(n[0].toUpperCase())}</span>`}
+function updHdr(){const u=auth&&auth.currentUser;$('#av').innerHTML=av();$('#who').textContent=(S.profile&&S.profile.name)||(u?u.email:'')}
+function nav(){const u=auth&&auth.currentUser,p=S.profile||{};
+  $('#nav').innerHTML=`<div class="dp"><div class="av">${av()}</div><div><b>${esc(p.name||'Peternak')}</b><small>${esc(u?u.email:'')}</small></div></div>`+PAGES.map(p=>`<button class="${page==p[0]?'on':''}" onclick="go('${p[0]}')"><span>${p[1]}</span><span>${p[2]}</span></button>`).join('')+`<button class="lg" onclick="logout()"><span>🚪</span><span>Keluar</span></button>`}
+function go(p){page=p;photoTmp='';menu(false);nav();render();scrollTo(0,0)}
+function menu(o){$('#nav').classList.toggle('open',o);$('#bd').classList.toggle('show',o)}
+$('#burger').onclick=()=>menu(!$('#nav').classList.contains('open'));$('#bd').onclick=()=>menu(false);
+function logout(){if(confirm('Keluar dari akun?'))auth.signOut()}
+
+/* ---------- DASHBOARD ---------- */
+function renderDash(){
+  if(page!='dash')return;
+  const I=S.items,sold=I.filter(i=>i.status=='sold'),st=I.filter(i=>i.status!='sold');
+  const sum=(a,f)=>a.reduce((x,i)=>x+f(i),0),P=i=>+i.price||0,C=i=>+i.cost||0;
+  const inc=sum(sold,P),cogs=sum(sold,C),lab=inc-cogs,mkt=sum(st,est),val=sum(st,P),pot=val-sum(st,C),mg=inc?Math.round(lab/inc*100):0;
+  const cards=Object.keys(TY).map(k=>{const a=I.filter(i=>i.type==k),c=x=>a.filter(i=>i.status==x).length;return `<div class="card kc" onclick="go('${k}')"><div class="em">${EM[k]}</div><label>${TY[k]}</label><div class="stat">${a.length}</div><small>Ready ${c('ready')} · Order ${c('order')} · Terjual ${c('sold')}</small></div>`}).join('');
+  const kp=(l,v,c)=>`<div class="card kpi ${c||''}"><label>${l}</label><div class="stat">${v}</div></div>`;
+  const now=new Date(),M=[];for(let n=5;n>=0;n--){const d=new Date(now.getFullYear(),now.getMonth()-n,1);M.push({k:d.getFullYear()+'-'+d.getMonth(),l:d.toLocaleDateString('id-ID',{month:'short'}),i:0,b:0})}
+  sold.forEach(i=>{const d=new Date(i.soldAt||i.id),m=M.find(x=>x.k==d.getFullYear()+'-'+d.getMonth());if(m){m.i+=P(i);m.b+=prof(i)}});
+  const mx=Math.max(1,...M.map(m=>m.i),...M.map(m=>m.b));
+  $('#main').innerHTML=`<div class="sec">Jumlah ternak (stok aktif + terjual)</div><div class="grid">${cards}</div>
+  <div class="sec">Nilai stok yang belum terjual (${st.length} data)</div><div class="grid">${kp('Taksiran harga pasar',rp(mkt))}${kp('Nilai jual (harga saya)',rp(val))}${kp('Potensi keuntungan',rp(pot),'')}</div>
+  <div class="sec">Hasil penjualan (${sold.length} terjual)</div><div class="grid">${kp('Income / pendapatan',rp(inc),'g')}${kp('Modal barang terjual',rp(cogs))}${kp('Laba bersih',rp(lab),'g')}${kp('Margin laba',mg+'%')}</div>
+  <div class="sec">Tren 6 bulan terakhir</div><div class="card"><div class="bars">${M.map(m=>`<div class="bc"><div class="bp"><i class="b1" style="height:${m.i/mx*100}%" title="Income ${rp(m.i)}"></i><i class="b2" style="height:${Math.max(0,m.b)/mx*100}%" title="Laba ${rp(m.b)}"></i></div>${m.l}</div>`).join('')}</div><div class="lg2"><span><i class="b1"></i>Income</span><span><i class="b2"></i>Laba bersih</span></div></div>`;
+}
+
+/* ---------- PROFIL ---------- */
+function resize(f,max,cb){const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const c=document.createElement('canvas'),k=Math.min(1,max/Math.max(im.width,im.height));c.width=im.width*k;c.height=im.height*k;c.getContext('2d').drawImage(im,0,0,c.width,c.height);cb(c.toDataURL('image/jpeg',.7))};im.src=r.result};r.readAsDataURL(f)}
+function renderProfil(){
+  const p=S.profile||{},u=auth.currentUser;let newPhoto='';
+  $('#main').innerHTML=`<div class="card"><h2>Profil Saya</h2><div class="pf"><div class="av" id="pav">${av()}</div><div>${F('Ganti foto profil','<input type="file" accept="image/*" id="pp_photo">')}</div></div>
+  <div class="grid">${F('Nama lengkap',`<input id="pp_name" value="${esc(p.name)}">`)}${F('Nama peternakan',`<input id="pp_farm" value="${esc(p.farm)}">`)}${F('No. HP / WhatsApp',`<input id="pp_hp" type="tel" value="${esc(p.hp)}">`)}${F('Email',`<input value="${esc(u.email)}" disabled>`)}${F('Password baru (kosongkan jika tidak diganti)','<input id="pp_pw" type="password" autocomplete="new-password">')}</div>
+  <div style="margin-top:12px">${F('Alamat peternakan',`<textarea id="pp_addr" rows="2">${esc(p.addr)}</textarea>`)}</div>
+  <div class="row"><button class="btn" id="pp_save">Simpan profil</button><button class="btn red" onclick="logout()">Keluar</button></div></div>`;
+  $('#pp_photo').onchange=e=>{const f=e.target.files[0];if(f)resize(f,240,d=>{newPhoto=d;$('#pav').innerHTML=`<img src="${d}">`})};
+  $('#pp_save').onclick=async()=>{
+    const o={name:$('#pp_name').value.trim(),farm:$('#pp_farm').value.trim(),hp:$('#pp_hp').value.trim(),addr:$('#pp_addr').value.trim()};
+    if(newPhoto)o.photo=newPhoto;
+    try{await base.collection('meta').doc('profile').set(o,{merge:true});const pw=$('#pp_pw').value;if(pw)await u.updatePassword(pw);alert('Profil tersimpan');$('#pp_pw').value=''}
+    catch(e){alert(e.code=='auth/requires-recent-login'?'Untuk ganti password, keluar lalu login ulang, kemudian coba lagi.':e.code=='auth/weak-password'?'Password minimal 6 karakter.':'Gagal: '+e.message)}
+  };
+}
 
 /* ---------- FILTER ---------- */
 function getList(){
@@ -118,6 +160,8 @@ function spec(){
 }
 const title=()=>page=='jual'?'Penjualan':'Data '+TY[page];
 function render(){
+  if(page=='dash')return renderDash();
+  if(page=='profil')return renderProfil();
   if(page=='input'){
     $('#main').innerHTML=`<div class="card"><h2>Input Data Ternak</h2>${form({type:draftType},true)}<div class="row"><button class="btn" id="sv">Simpan</button></div></div>`;
     bindForm();$('#f_type').onchange=e=>{draftType=e.target.value;photoTmp='';render()};
