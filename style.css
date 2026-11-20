@@ -43,9 +43,9 @@ main{padding:18px;max-width:1200px;margin:0 auto}
   .top{padding:10px 14px;padding-top:calc(10px + env(safe-area-inset-top,0px));justify-content:space-between}
   #who,#out{display:none}
   #burger{display:block;border:0;background:rgba(255,255,255,.22);color:#fff;font-size:22px;width:40px;height:38px;border-radius:10px}
-  #nav{position:fixed;top:0;bottom:0;right:0;width:78%;max-width:310px;margin:0;flex-direction:column;flex-wrap:nowrap;gap:4px;background:var(--card);padding:calc(14px + env(safe-area-inset-top,0px)) 12px calc(14px + env(safe-area-inset-bottom,0px));transform:translateX(105%);transition:transform .28s;z-index:60;overflow-y:auto;box-shadow:-6px 0 24px rgba(0,0,0,.2)}
-  #nav.open{transform:none}
-  #bd.show{display:block;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:55}
+  #nav{position:fixed;top:0;bottom:0;right:0;width:78%;max-width:310px;margin:0;flex-direction:column;flex-wrap:nowrap;gap:4px;background:var(--card);padding:calc(14px + env(safe-area-inset-top,0px)) 12px calc(14px + env(safe-area-inset-bottom,0px));transform:translateX(105%);transition:transform .28s;z-index:100;pointer-events:none;visibility:hidden;overflow-y:auto;box-shadow:-6px 0 24px rgba(0,0,0,.2)}
+  #nav.open{transform:none;pointer-events:auto;visibility:visible}
+  #bd.show{display:block;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:39}
   #nav button{background:none;color:var(--tx);padding:12px;font-size:15px;width:100%}
   #nav button:hover{background:rgba(155,225,93,.2)}
   #nav button.on{background:var(--grad);color:#fff}
